@@ -69,6 +69,10 @@ Models would report unavailable in a CI environment (the reasoning being that
 Apple Intelligence needs specific hardware). It reported `available` on an
 Apple Silicon `macos-26` runner, in the iOS 26.5 simulator.
 
+Reproduced: a second, independent run on the next commit reported the same
+three lines (`run=35838764039`, probe passed in 0.044s). Two runs, same result —
+this is a re-runnable observation, not a one-off.
+
 What that does and does not settle:
 
 - It settles that `import FoundationModels` compiles against the iOS 26.5 SDK,
