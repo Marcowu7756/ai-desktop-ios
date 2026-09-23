@@ -9,6 +9,7 @@ Read in this order:
 | [V0-SCOPE](V0-SCOPE.md) | what V0 proves, what is in, what is out, acceptance checks |
 | [OPEN-ITEMS](OPEN-ITEMS.md) | open questions, and what can only be verified on a Mac |
 | [EVIDENCE-windows-swift-6.4](EVIDENCE-windows-swift-6.4.md) | toolchain, environment prerequisites, real build/test results, and what they do not prove |
+| [EVIDENCE-apple-ci](EVIDENCE-apple-ci.md) | GitHub-hosted macOS run: App compiled, simulator probe, Foundation Models availability |
 
 ## Layout
 

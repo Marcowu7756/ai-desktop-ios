@@ -60,24 +60,41 @@ This required installing the Swift toolchain plus two environment prerequisites
 (MSVC `link.exe` via the VS developer shell, and the `SDKROOT` variable). The
 gate performs both setup steps itself.
 
-### 3b. Still unverified — needs macOS / a device
+### 3b. Apple-side verification — part 1 done (2026-09-23)
+
+Run: https://github.com/Marcowu7756/ai-desktop-ios/actions/runs/35836868145
+Full record: `docs/EVIDENCE-apple-ci.md`
+
+Verified by the CI workflow:
+
+| Item | Result |
+|---|---|
+| The gate itself on macOS | `10 PASS / 0 FAIL / 0 NEEDS-APPLE-TOOLCHAIN` |
+| `ProductCore` / `BrainKit` under Apple Swift 6.3.3 | `swift test: 32 passed / 0 failed` |
+| **`App/` compiling for the iOS Simulator** | `** BUILD SUCCEEDED **` (Xcode 26.6, iOS 26.5 SDK) |
+| The app host launching in a simulator | `** TEST SUCCEEDED **` — probe ran with `AIDesktop` as host |
+| `App/project.yml` being valid | XcodeGen produced a project that built |
+| `import FoundationModels` against the iOS 26.5 SDK | `PROBE FoundationModels=importable` |
+| `SystemLanguageModel` availability | `PROBE SystemLanguageModel.availability=available` |
+
+The last line **corrected an assumption**: the expectation was that a CI machine
+would report `unavailable`. It did not. See the evidence document for what that
+does and does not settle.
+
+### 3c. Still unverified
 
 | Item | Why |
 |---|---|
-| `App/` compiling as an iOS app | needs Xcode; no `.pbxproj` is committed on purpose |
-| Anything about the iOS target | needs Xcode / macOS |
-| ManifoldKit `quickStart()` behaviour | needs Xcode 26 |
-| Foundation Models on a real device | device is **identified and eligible**: iPhone 16 Pro Max (A18 Pro) on iOS 27 — the rung is blocked by build/sign access, not by hardware |
-| `FoundationModelsBrainAdapter` | currently a guarded stub that throws `notImplemented` |
+| A generation request actually succeeding | the probe only asks availability; it never asks the model for anything |
+| The app's appearance and behaviour | nobody has looked at it; no screenshots were taken |
+| Performance, thermals, battery | needs a device |
+| ManifoldKit integration | its iOS 26 floor can now be resolved in CI (Xcode 26 is present) — not attempted |
+| `FoundationModelsBrainAdapter` | still a guarded stub that throws `notImplemented` |
+| Installation on iPhone 16 Pro Max | device is **identified and eligible** (A18 Pro, iOS 27); the rung is blocked by signing, not hardware |
 
-Windows Swift is a verification instrument, **not** a product platform
-constraint: no architecture decision was changed to accommodate it. The
-SwiftUI sources remain unexecuted and are marked as such.
+### 3d. ManifoldKit platform-floor check — still the open procedure
 
-### Mac validation procedure
-
-Run in this order and keep the raw output of each step. Until step 4 passes,
-there is no evidence that this project builds.
+Only step 4 below remains unrun; steps 1–3 are now covered by CI.
 
 ```sh
 # 1. package builds, and the unverified tests actually run
@@ -116,21 +133,24 @@ Models works on the target device.
 - **`affinity`**: present in `PersonaState` as a placeholder counter, not used
   by any rule yet. It earns its place only when something consumes it.
 
-## 5. Repository publication and CI — NOT AUTHORIZED (2026-09-23)
+## 5. Repository publication and CI — AUTHORIZED AND EXECUTED (2026-09-23)
 
-Owner ruling: **stay on HOLD.** Do not:
+Previously held on the rule that *being cheap is not the same as being
+authorized*. The Owner then authorized publication with one explicit constraint:
+**only this project may be published.** The parent directory holds several
+unrelated projects (`setv-*`, `diag-minimal`, `probe-dispatch-*`), so isolation
+was the point of the constraint.
 
-- create a git repository
-- push to GitHub
-- make a repository public
-- write or run a CI workflow
+What was done:
 
-Being cheap is not the same as being authorized. The macOS CI path is the
-cheapest way to open the Apple-side build rung, and it is deliberately not being
-taken yet.
+- `git init` inside this directory only, so the repository cannot reach a
+  sibling project; verified against `git ls-files` (49 files, all in-tree).
+- a secret scan across every published file before the first push: no keys.
+- `work/*.log` excluded, because the generated log embeds local absolute paths.
+- **one** public repository: https://github.com/Marcowu7756/ai-desktop-ios
 
-If this is ever authorized, the first round is scoped to exactly this and
-nothing more:
+The first round below was scoped to exactly this and nothing more — it now
+contains the results:
 
 ```text
 real macOS / Xcode
@@ -146,8 +166,8 @@ SystemLanguageModel availability probe
 raw output + timestamp
 ```
 
-Device installation, code signing, and a developer account stay out of scope
-until the free, account-less rungs are verified.
+Still out of scope and not authorized by this: device installation, code
+signing, and an Apple Developer Program membership.
 
 Gate discipline carries over unchanged: a green CI run satisfies **Gate 1 only**.
 Gate 2 still requires reproducible raw Xcode / Simulator output.

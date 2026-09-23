@@ -197,12 +197,24 @@ Trust boundary:
     → 两段式 pipeline 保持，CLOSED
 
 Verification:
-    ProductCore / BrainKit = Windows-hosted Swift implementation VERIFIED
+    ProductCore / BrainKit = VERIFIED on both toolchains
+      Windows (Swift 6.4)                 macOS CI (Apple Swift 6.3.3)
         swift build -> Build complete
-        swift test  -> 19 passed / 0 failed
+        swift test  -> 32 passed / 0 failed   （两个工具链一致）
         gate        -> 10 PASS / 0 FAIL / 0 NEEDS-APPLE-TOOLCHAIN
-    SwiftUI / iOS / Foundation Models / 真机 = OPEN
-        （仅因缺少 macOS/Xcode；不外推，不用模拟环境补位）
+
+    SwiftUI App = 编译级 VERIFIED（首次）
+        Xcode 26.6 / iOS 26.5 SDK -> ** BUILD SUCCEEDED **
+        xcodegen 生成的工程可用；probe 以 App 为 host 在模拟器中运行
+
+    Foundation Models = 部分 MEASURED
+        import FoundationModels -> importable
+        SystemLanguageModel.availability -> available（CI 环境实测）
+        注意：这只推翻了"CI 里必然不可用"的预期，
+              不等于真机结论，也还没跑过一次真实生成
+
+    仍未验证: 生成请求 / 界面观感 / 性能 / ManifoldKit 集成
+              装机（需签名 + 开发者账号）
 
 Swift change gate（不可绕过）:
     edit -> swift build -> swift test -> python Tests/check_boundaries.py
@@ -219,5 +231,6 @@ Apple 环境模拟:
     （用 stub 填补缺口 = 把诚实的 unknown 变成假 PASS）
 ```
 
-证据：docs/EVIDENCE-windows-swift-6.4.md
+证据：docs/EVIDENCE-windows-swift-6.4.md · docs/EVIDENCE-apple-ci.md
+仓库：https://github.com/Marcowu7756/ai-desktop-ios （公开，仅此一个）
 工具链：Swift 6.4（x86_64-unknown-windows-msvc），已安装并保留
