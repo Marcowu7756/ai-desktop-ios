@@ -73,6 +73,62 @@ Reproduced: a second, independent run on the next commit reported the same
 three lines (`run=35838764039`, probe passed in 0.044s). Two runs, same result —
 this is a re-runnable observation, not a one-off.
 
+## 4b. Generation probe — attempted, and it FAILED
+
+Run: https://github.com/Marcowu7756/ai-desktop-ios/actions/runs/35841400612
+
+```
+GENERATION started=2026-09-23T09:20:41Z
+GENERATION availability=available
+GENERATION prompt="Reply with exactly one word: pong"
+GENERATION result=failed
+GENERATION latency=1.902s
+GENERATION error=Error Domain=FoundationModels.LanguageModelSession.GenerationError Code=-1 "(null)"
+  UserInfo={NSMultipleUnderlyingErrorsKey=(
+    "Error Domain=FoundationModels.LanguageModelSession.GenerationError Code=-1 \"(null)\"
+     UserInfo={NSMultipleUnderlyingErrorsKey=(
+       \"Error Domain=ModelManagerServices.ModelManagerError Code=1026 \\\"(null)\\\" UserInfo={NSMultipleUnderlyingErrorsKey=(\\n)}\"
+     )}"
+  )}
+GENERATION finished=2026-09-23T09:20:43Z
+```
+
+**`availability` said `available` and the request failed anyway.** That is the
+whole reason the previous section carried a warning. The API's availability
+answer is not a promise that a request will complete, and this is the measured
+proof.
+
+The deepest error in the chain is `ModelManagerServices.ModelManagerError
+Code=1026`. **What 1026 means is not established here.** It is a model-manager
+error, which suggests the on-device model assets are not usable in this VM, but
+that is an inference, not a measurement — so it is recorded as unknown rather
+than explained.
+
+Note carefully: **the test passed.** The probes record, they do not assert, so
+the run is green while generation failed. Reading the green badge as success
+would be exactly the failure mode this project's gates exist to prevent, which
+is why the workflow writes these lines into the run's step summary.
+
+Timing: the request failed in 1.9s; the whole probe test took 2.06s.
+
+## 4c. Visual probe — the app runs
+
+Captured from the same run, simulator `iPhone 17` (iOS 26.5):
+
+```
+xcrun simctl install <device> AIDesktop.app
+xcrun simctl launch   <device> com.example.aidesktop.AIDesktop
+xcrun simctl io       <device> screenshot screenshots/main-scene.png
+```
+
+Result: `screenshots/main-scene.png` (committed). The scene renders — the flat
+vector character (circle face, `idle` label), an empty conversation area, and
+the "Say something" composer with a disabled Send button.
+
+This closes the "nobody has looked at it" gap. It does **not** close "does it
+look right", which is a judgement, and it says nothing about behaviour beyond
+launch and first render.
+
 What that does and does not settle:
 
 - It settles that `import FoundationModels` compiles against the iOS 26.5 SDK,
@@ -87,8 +143,8 @@ What that does and does not settle:
 
 | Unverified | Needs |
 |---|---|
-| A model actually generates a reply | a generation test in CI or an on-device run |
-| The app looks or behaves correctly | eyes, and probably a device |
+| A model actually generating a reply | **attempted in CI and failed** (`ModelManagerError 1026`); success is unverified everywhere, including on the device |
+| Whether the app looks or behaves *correctly* | it launches and renders (see 4c); correctness is a judgement, and behaviour beyond first render is unmeasured |
 | Performance / thermals / battery | a device |
 | Installation on iPhone 16 Pro Max | signing + Apple Developer Program |
 | ManifoldKit integration | its iOS 26 floor means the adapter package can now be resolved in CI — not attempted |

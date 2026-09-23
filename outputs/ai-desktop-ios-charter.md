@@ -207,13 +207,20 @@ Verification:
         Xcode 26.6 / iOS 26.5 SDK -> ** BUILD SUCCEEDED **
         xcodegen 生成的工程可用；probe 以 App 为 host 在模拟器中运行
 
-    Foundation Models = 部分 MEASURED
-        import FoundationModels -> importable
+    Foundation Models = MEASURED，且结论是负面的
+        import FoundationModels   -> importable
         SystemLanguageModel.availability -> available（CI 环境实测）
-        注意：这只推翻了"CI 里必然不可用"的预期，
-              不等于真机结论，也还没跑过一次真实生成
+        一次真实生成请求          -> FAILED
+            ModelManagerServices.ModelManagerError Code=1026
+            latency 1.9s / availability 却报 available
+        → availability ≠ 请求能完成。此前的警告已被实测证实。
+        → 1026 的含义未确认，记录为 unknown，不做解释
 
-    仍未验证: 生成请求 / 界面观感 / 性能 / ManifoldKit 集成
+    界面 = 首次可见
+        screenshots/main-scene.png（模拟器截图，App 正常渲染）
+        注意：这只回答"能不能渲染"，不回答"好不好看 / 行为对不对"
+
+    仍未验证: 生成成功 / 界面正确性 / 性能 / ManifoldKit 集成
               装机（需签名 + 开发者账号）
 
 Swift change gate（不可绕过）:

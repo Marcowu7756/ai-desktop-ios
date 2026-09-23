@@ -76,6 +76,8 @@ Verified by the CI workflow:
 | `App/project.yml` being valid | XcodeGen produced a project that built |
 | `import FoundationModels` against the iOS 26.5 SDK | `PROBE FoundationModels=importable` |
 | `SystemLanguageModel` availability | `PROBE SystemLanguageModel.availability=available` |
+| One real generation request | **attempted and FAILED** — `GENERATION result=failed`, root error `ModelManagerServices.ModelManagerError Code=1026`, 1.9s. Availability said `available` anyway |
+| The app actually rendering | screenshot captured and committed: `screenshots/main-scene.png` |
 
 The last line **corrected an assumption**: the expectation was that a CI machine
 would report `unavailable`. It did not. See the evidence document for what that
@@ -85,8 +87,8 @@ does and does not settle.
 
 | Item | Why |
 |---|---|
-| A generation request actually succeeding | the probe only asks availability; it never asks the model for anything |
-| The app's appearance and behaviour | nobody has looked at it; no screenshots were taken |
+| A generation request actually succeeding | attempted in CI and failed; what `ModelManagerError 1026` means is not established |
+| Whether the app looks or behaves *correctly* | it renders and launches; correctness is a judgement, and behaviour beyond first render is unmeasured |
 | Performance, thermals, battery | needs a device |
 | ManifoldKit integration | its iOS 26 floor can now be resolved in CI (Xcode 26 is present) — not attempted |
 | `FoundationModelsBrainAdapter` | still a guarded stub that throws `notImplemented` |

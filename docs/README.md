@@ -20,6 +20,7 @@ BrainKit/                  adapters (mock, remote, foundation models)
 App/                       SwiftUI sources + XcodeGen spec (no committed .pbxproj)
 Tests/                     Swift tests + the boundary gate
 Adapters/ManifoldAdapter/  separate local package, OFF, the only place ManifoldKit may appear
+screenshots/               captured from the simulator by CI (visual probe)
 docs/                      this documentation
 ```
 
