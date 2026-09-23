@@ -1,0 +1,43 @@
+# XcodeGen spec for the App target only.
+#
+# Why this file instead of a committed .pbxproj: a hand-written pbxproj is easy
+# to get subtly wrong and cannot be validated in this environment (Windows, no
+# Xcode). Generate the project on a Mac with:
+#
+#   brew install xcodegen
+#   cd App && xcodegen generate
+#
+# The SwiftPM package at the repository root provides ProductCore and BrainKit.
+
+name: AIDesktop
+
+options:
+  bundleIdPrefix: com.example.aidesktop
+  deploymentTarget:
+    iOS: "17.0"
+
+packages:
+  AIDesktopPackage:
+    path: ..
+
+targets:
+  AIDesktop:
+    type: application
+    platform: iOS
+    sources:
+      - path: .
+        excludes:
+          - project.yml
+          - README.md
+    dependencies:
+      - package: AIDesktopPackage
+        product: ProductCore
+      - package: AIDesktopPackage
+        product: BrainKit
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: AI Desktop
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait

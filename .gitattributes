@@ -1,0 +1,8 @@
+# Keep the repository's line endings stable across Windows and macOS checkouts.
+* text=auto eol=lf
+
+# PowerShell scripts are the one exception: they run on Windows here.
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
