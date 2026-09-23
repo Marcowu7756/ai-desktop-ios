@@ -111,6 +111,10 @@ is why the workflow writes these lines into the run's step summary.
 
 Timing: the request failed in 1.9s; the whole probe test took 2.06s.
 
+Reproduced: run `35843422415` on the next commit failed the same way —
+`result=failed`, latency 2.226s, `availability=available`. Two independent runs,
+same outcome, so this is a property of the environment rather than a flake.
+
 ## 4c. Visual probe — the app runs
 
 Captured from the same run, simulator `iPhone 17` (iOS 26.5):
