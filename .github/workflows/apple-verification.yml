@@ -15,7 +15,7 @@ on:
 
 jobs:
   core:
-    name: Core (gate: build + test)
+    name: "Core: gate build and test"
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
