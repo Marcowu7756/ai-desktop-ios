@@ -1,13 +1,12 @@
-# XcodeGen spec for the App target only.
+# XcodeGen spec for the App target and the Apple-side probe test.
 #
 # Why this file instead of a committed .pbxproj: a hand-written pbxproj is easy
-# to get subtly wrong and cannot be validated in this environment (Windows, no
-# Xcode). Generate the project on a Mac with:
+# to get subtly wrong and was never validated (this scaffold was written on
+# Windows, with no Xcode). Generating it in CI both builds the app and tests the
+# spec itself.
 #
 #   brew install xcodegen
 #   cd App && xcodegen generate
-#
-# The SwiftPM package at the repository root provides ProductCore and BrainKit.
 
 name: AIDesktop
 
@@ -29,6 +28,7 @@ targets:
         excludes:
           - project.yml
           - README.md
+          - Tests
     dependencies:
       - package: AIDesktopPackage
         product: ProductCore
@@ -41,3 +41,24 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+
+  AIDesktopProbeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: AIDesktop
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  AIDesktop:
+    build:
+      targets:
+        AIDesktop: all
+        AIDesktopProbeTests: [test]
+    test:
+      targets:
+        - AIDesktopProbeTests

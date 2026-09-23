@@ -1,0 +1,92 @@
+name: Apple verification
+
+# Scope of this workflow, deliberately narrow:
+#   - run the same boundary gate that passes on Windows, but on Apple's toolchain
+#   - compile the SwiftUI App target for the iOS Simulator
+#   - record what SystemLanguageModel reports in a CI environment
+#
+# It does NOT install anything on a device, does not sign, and does not claim
+# that Apple Intelligence works. Those stay OPEN.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  core:
+    name: Core (gate: build + test)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios || true
+
+      - name: Boundary gate (real build + real test)
+        run: python3 Tests/check_boundaries.py
+
+      - name: Upload gate output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: core-gate-output
+          path: work/swift-build-test.log
+          if-no-files-found: warn
+
+  app:
+    name: App (xcodegen + xcodebuild + simulator probe)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: App
+        run: xcodegen generate
+
+      - name: Show available simulator destinations
+        working-directory: App
+        run: xcodebuild -scheme AIDesktop -showdestinations 2>&1 | sort -u | head -40
+
+      - name: Build the App for the iOS Simulator
+        working-directory: App
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -scheme AIDesktop \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build.log
+
+      - name: Run the Apple-side probe on a simulator
+        working-directory: App
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -scheme AIDesktop \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee probe.log
+
+      - name: Show probe lines
+        if: always()
+        working-directory: App
+        run: grep -a "PROBE" probe.log || echo "no PROBE lines captured"
+
+      - name: Upload raw xcodebuild output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-verification-raw-output
+          path: |
+            App/build.log
+            App/probe.log
+          if-no-files-found: warn

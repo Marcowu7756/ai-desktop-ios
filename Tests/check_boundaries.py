@@ -139,46 +139,68 @@ def find_visual_studio() -> str | None:
 
 
 def run_compile_check() -> tuple[bool | None, list[str]]:
-    """Actually build and test. Returns None (unknown) when it cannot run."""
+    """Actually build and test. Returns None (unknown) when it cannot run.
+
+    Windows needs the MSVC environment prepared first; Apple platforms and
+    Linux do not, so the toolchain is invoked directly there.
+    """
     swift = find_swift()
     if swift is None:
         return None, ["no Swift toolchain found - install one, or verify on a Mac"]
 
-    visual_studio = find_visual_studio()
-    if visual_studio is None:
-        return None, [
-            f"swift found: {swift}",
-            "no Visual Studio install to supply link.exe, so nothing can be linked",
-        ]
+    if os.name == "nt":
+        visual_studio = find_visual_studio()
+        if visual_studio is None:
+            return None, [
+                f"swift found: {swift}",
+                "no Visual Studio install to supply link.exe, so nothing can be linked",
+            ]
 
-    shell = shutil.which("pwsh") or shutil.which("powershell")
-    if shell is None:
-        return None, ["no PowerShell available to prepare the MSVC environment"]
+        shell = shutil.which("pwsh") or shutil.which("powershell")
+        if shell is None:
+            return None, ["no PowerShell available to prepare the MSVC environment"]
 
-    swift_bin = str(Path(swift).parent)
-    command = (
-        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
-        f"$vs = '{visual_studio}'; "
-        "Import-Module (Join-Path $vs 'Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll'); "
-        "Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation "
-        "-DevCmdArguments '-arch=x64 -host_arch=x64' | Out-Null; "
-        f"$env:Path = '{swift_bin};' + $env:Path + ';' + [Environment]::GetEnvironmentVariable('Path','User'); "
-        "$env:SDKROOT = [Environment]::GetEnvironmentVariable('SDKROOT','User'); "
-        "swift build 2>&1 | Out-String; "
-        "if ($LASTEXITCODE -ne 0) { Write-Output 'AIDESKTOP_BUILD_FAILED'; exit 0 }; "
-        "swift test 2>&1 | Out-String"
-    )
-
-    try:
-        result = subprocess.run(
-            [shell, "-NoProfile", "-Command", command],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=3600, cwd=str(ROOT),
+        swift_bin = str(Path(swift).parent)
+        command = (
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+            f"$vs = '{visual_studio}'; "
+            "Import-Module (Join-Path $vs 'Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll'); "
+            "Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation "
+            "-DevCmdArguments '-arch=x64 -host_arch=x64' | Out-Null; "
+            f"$env:Path = '{swift_bin};' + $env:Path + ';' + [Environment]::GetEnvironmentVariable('Path','User'); "
+            "$env:SDKROOT = [Environment]::GetEnvironmentVariable('SDKROOT','User'); "
+            "swift build 2>&1 | Out-String; "
+            "if ($LASTEXITCODE -ne 0) { Write-Output 'AIDESKTOP_BUILD_FAILED'; exit 0 }; "
+            "swift test 2>&1 | Out-String"
         )
-    except subprocess.TimeoutExpired:
-        return None, ["swift build / swift test exceeded the time limit"]
+        try:
+            result = subprocess.run(
+                [shell, "-NoProfile", "-Command", command],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=3600, cwd=str(ROOT),
+            )
+        except subprocess.TimeoutExpired:
+            return None, ["swift build / swift test exceeded the time limit"]
+        output = (result.stdout or "") + (result.stderr or "")
+        build_failed_marker = "AIDESKTOP_BUILD_FAILED" in output
+    else:
+        # macOS / Linux: the toolchain is self-contained, so run it directly.
+        chunks: list[str] = []
+        build_failed_marker = False
+        for arguments in ([swift, "build"], [swift, "test"]):
+            try:
+                result = subprocess.run(
+                    arguments, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", timeout=3600, cwd=str(ROOT),
+                )
+            except subprocess.TimeoutExpired:
+                return None, [f"{' '.join(arguments)} exceeded the time limit"]
+            chunks.append(result.stdout or "")
+            chunks.append(result.stderr or "")
+            if arguments[-1] == "build" and result.returncode != 0:
+                build_failed_marker = True
+        output = "".join(chunks)
 
-    output = (result.stdout or "") + (result.stderr or "")
     log = ROOT / "work" / "swift-build-test.log"
     try:
         log.parent.mkdir(parents=True, exist_ok=True)
@@ -190,7 +212,7 @@ def run_compile_check() -> tuple[bool | None, list[str]]:
     if log is not None:
         evidence.append(f"full output: {rel(log)}")
 
-    if "AIDESKTOP_BUILD_FAILED" in output:
+    if build_failed_marker:
         evidence += [line.strip() for line in output.splitlines() if ": error:" in line][:5] or ["swift build failed"]
         return False, evidence
 

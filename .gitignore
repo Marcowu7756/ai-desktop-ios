@@ -16,6 +16,8 @@ App/Info.plist
 App/*.ipa
 App/*.app
 App/*.dSYM
+App/build/
+App/probe.log
 
 # OS noise
 .DS_Store
