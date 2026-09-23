@@ -65,7 +65,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee build.log
 
-      - name: Run the Apple-side probe on a simulator
+      - name: Run both probes on a simulator
         working-directory: App
         run: |
           set -o pipefail
@@ -76,10 +76,54 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test 2>&1 | tee probe.log
 
-      - name: Show probe lines
+      # Visual probe. Separate from the generation probe, recorded separately:
+      # the point is to see the app, not to infer anything from a green test.
+      - name: Capture a simulator screenshot
         if: always()
         working-directory: App
-        run: grep -a "PROBE" probe.log || echo "no PROBE lines captured"
+        run: |
+          set -euo pipefail
+          UDID_PATTERN='[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'
+          DEVICE=$(xcrun simctl list devices booted | grep -oE "$UDID_PATTERN" | head -1 || true)
+          if [ -z "${DEVICE:-}" ]; then
+            DEVICE=$(xcrun simctl list devices available | grep -m1 'iPhone 17 (' | grep -oE "$UDID_PATTERN" | head -1)
+            xcrun simctl boot "$DEVICE"
+            xcrun simctl bootstatus "$DEVICE" -b
+          fi
+          echo "device=$DEVICE"
+          APP_PATH=$(find build/Build/Products -maxdepth 3 -name 'AIDesktop.app' | head -1)
+          echo "app=$APP_PATH"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")
+          echo "bundle=$BUNDLE_ID"
+          xcrun simctl install "$DEVICE" "$APP_PATH"
+          xcrun simctl launch "$DEVICE" "$BUNDLE_ID"
+          sleep 8
+          mkdir -p ../screenshots
+          xcrun simctl io "$DEVICE" screenshot ../screenshots/main-scene.png
+          ls -l ../screenshots
+
+      - name: Record probe results
+        if: always()
+        working-directory: App
+        run: |
+          {
+            echo "### Measurement results"
+            echo
+            echo "A green run does **not** mean generation succeeded. Read the"
+            echo "\`GENERATION result=\` line below."
+            echo
+            echo '```'
+            grep -a -E 'PROBE |GENERATION ' probe.log || echo 'no probe lines captured'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-screenshot
+          path: screenshots/
+          if-no-files-found: warn
 
       - name: Upload raw xcodebuild output
         if: always()
